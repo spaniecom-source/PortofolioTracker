@@ -259,7 +259,7 @@ async function refreshAll(){
     const s=stocks[i];
     prevPrices[s.ticker]=s.price;
     const d=await fetchPrice(s.ticker);
-    if(d){s.price=d.price;s.chg=d.chg;s.chgPct=d.chgPct;ok++}
+    if(d){s.price=d.price;s.chg=d.chg;s.chgPct=d.chgPct;ok++;save();render();const n=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});e('lastTime').textContent=n;e('footerR').textContent='Last refreshed: '+n;setStatus('live');}
     if(i<stocks.length-1)await sleep(400);
   }
   save();render();
