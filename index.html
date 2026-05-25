@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
 <title>SP's Portfolio</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -131,6 +130,7 @@ body{background:var(--bg);color:var(--text);font-family:'Montserrat',sans-serif;
   <div class="topbar-r">
     <div class="status-pill" id="statusPill">OFFLINE</div>
     <div id="lastTime" style="font-size:9px;color:var(--text3);letter-spacing:.5px"></div>
+    <input id="apiKeyInput" placeholder="Finnhub API key..." style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 12px;color:#fff;font-family:'Montserrat',sans-serif;font-size:10px;outline:none;width:190px;letter-spacing:.3px" oninput="apiKey=this.value;localStorage.setItem('fhKey',this.value);if(apiKey.length>10){refreshAll();startTimer()}">
     <button class="btn" id="refreshBtn" onclick="refreshAll()">↻ Refresh</button>
   </div>
 </div>
@@ -218,6 +218,7 @@ const PAL=['#4F8EF7','#00F0A0','#F7C948','#FF3D6B','#9B72F7','#FB923C','#34D399'
 let stocks=JSON.parse(localStorage.getItem('edgePortfolio_v5')||'[]');
 let prevPrices={};
 let timer=null;
+let apiKey=localStorage.getItem('fhKey')||'';
 let modalOpen=null; // ticker of open modal
 
 function save(){localStorage.setItem('edgePortfolio_v5',JSON.stringify(stocks))}
@@ -234,18 +235,12 @@ function ferr(msg){const el=e('ferr');el.textContent=msg;clearTimeout(el._t);el.
 
 // ── Price fetch ───────────────────────────────────────────────────
 async function fetchPrice(ticker){
-  const yahoo=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
-  const url=`https://api.allorigins.win/get?url=${encodeURIComponent(yahoo)}`;
+  if(!apiKey)return null;
   try{
-    const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
-    const outer=await r.json();
-    const d=JSON.parse(outer.contents);
-    const meta=d?.chart?.result?.[0]?.meta;
-    if(!meta)return null;
-    const cur=meta.regularMarketPrice||meta.previousClose;
-    const prev=meta.previousClose||cur;
-    if(!cur||cur<=0)return null;
-    return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
+    const d=await r.json();
+    if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};
+    return null;
   }catch(err){return null}
 }
 
@@ -259,7 +254,11 @@ async function refreshAll(){
     const s=stocks[i];
     prevPrices[s.ticker]=s.price;
     const d=await fetchPrice(s.ticker);
-    if(d){s.price=d.price;s.chg=d.chg;s.chgPct=d.chgPct;ok++;save();render();const n=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});e('lastTime').textContent=n;e('footerR').textContent='Last refreshed: '+n;setStatus('live');}
+    if(d){s.price=d.price;s.chg=d.chg;s.chgPct=d.chgPct;ok++;save();render();
+      const n=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      e('lastTime').textContent=n;e('footerR').textContent='Last refreshed: '+n;
+      setStatus('live');
+    }
     if(i<stocks.length-1)await sleep(400);
   }
   save();render();
@@ -527,5 +526,8 @@ function renderAlloc(list,tv){
 });
 
 render();
-if(stocks.length){refreshAll();startTimer()}
+// Restore API key input
+setTimeout(()=>{const inp=e('apiKeyInput');if(inp&&apiKey)inp.value=apiKey;},50);
+if(stocks.length&&apiKey){refreshAll();startTimer()}
+else if(!apiKey){setStatus('offline')}
 </script>
