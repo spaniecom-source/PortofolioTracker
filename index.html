@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
 <title>SP's Portfolio</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -292,7 +292,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
   <div class="topbar-right">
     <div class="status-dot" id="statusDot"></div>
-    <div class="clock" id="clock">00:00:00</div>
+    <div class="clock" id="clock">00:00:00</div><div class="clock" id="eurRate" style="color:var(--gold);opacity:0.7">EUR/USD —</div>
     <div class="market-status closed" id="marketStatus">CLOSED</div>
     <div class="api-wrap">
       <label>API</label>
@@ -308,9 +308,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <!-- PORTFOLIO -->
   <div class="page active" id="pg-portfolio">
     <div class="port-top">
-      <div class="kpi lit" id="kpi0"><div class="kpi-bar"></div><div class="kpi-label">Total Invested</div><div class="kpi-val c-gold" id="k-invested">$0.00</div><div class="kpi-sub" id="k-pos">0 positions</div></div>
-      <div class="kpi" id="kpi1"><div class="kpi-bar"></div><div class="kpi-label">Portfolio Value</div><div class="kpi-val c-muted" id="k-value">$0.00</div><div class="kpi-sub">mark-to-market</div></div>
-      <div class="kpi" id="kpi2"><div class="kpi-bar"></div><div class="kpi-label">Total P&L</div><div class="kpi-val c-muted" id="k-pnl">$0.00</div><div class="kpi-sub" id="k-pnlpct">—</div></div>
+      <div class="kpi lit" id="kpi0"><div class="kpi-bar"></div><div class="kpi-label">Total Invested</div><div class="kpi-val c-gold" id="k-invested">$0.00</div><div class="kpi-sub" id="k-invested-eur" style="color:var(--gold);opacity:0.6">€0.00</div><div class="kpi-sub" id="k-pos">0 positions</div></div>
+      <div class="kpi" id="kpi1"><div class="kpi-bar"></div><div class="kpi-label">Portfolio Value</div><div class="kpi-val c-muted" id="k-value">$0.00</div><div class="kpi-sub" id="k-value-eur">€0.00</div><div class="kpi-sub">mark-to-market</div></div>
+      <div class="kpi" id="kpi2"><div class="kpi-bar"></div><div class="kpi-label">Total P&L</div><div class="kpi-val c-muted" id="k-pnl">$0.00</div><div class="kpi-sub" id="k-pnl-eur">€0.00</div><div class="kpi-sub" id="k-pnlpct">—</div></div>
       <div class="kpi" id="kpi3"><div class="kpi-bar"></div><div class="kpi-label">Best Performer</div><div class="kpi-val c-muted" id="k-best" style="font-size:15px">—</div><div class="kpi-sub" id="k-bestpct">—</div></div>
       <div class="kpi" id="kpi4"><div class="kpi-bar"></div><div class="kpi-label">Worst Performer</div><div class="kpi-val c-muted" id="k-worst" style="font-size:15px">—</div><div class="kpi-sub" id="k-worstpct">—</div></div>
     </div>
@@ -578,7 +578,7 @@ async function refreshAll(){
       if(ws){ws.price=d.price;ws.chg=d.chg;ws.chgPct=d.chgPct;}
     }
   });
-  save();saveWatch();renderPortfolio();saveHistorySnapshot();
+  save();saveWatch();fetchEurRate().then(()=>renderPortfolio());saveHistorySnapshot();
   const rbtn2=el('refreshBtn');if(rbtn2)rbtn2.textContent='↻ Refresh';
   const sdot2=el('statusDot');if(sdot2)sdot2.className=ok>0?'status-dot live':'status-dot err';
   toast(ok>0?`${ok}/${tickers.length} prices updated`:'Price fetch failed — retry','ok');
@@ -722,11 +722,11 @@ function renderPortfolio(){
 }
 
 function renderKPIs(ti,tv){
-  el('k-invested').textContent=fmt(ti);el('k-pos').textContent=stocks.length+' position'+(stocks.length!==1?'s':'');
-  el('k-value').textContent=fmt(tv);el('k-value').className='kpi-val '+(tv>ti?'c-green':tv<ti?'c-red':'c-muted');
+  el('k-invested').textContent=fmt(ti);el('k-invested-eur').textContent=fmtEur(ti);el('k-pos').textContent=stocks.length+' position'+(stocks.length!==1?'s':'');
+  el('k-value').textContent=fmt(tv);el('k-value-eur').textContent=fmtEur(tv);el('k-value').className='kpi-val '+(tv>ti?'c-green':tv<ti?'c-red':'c-muted');
   el('kpi1').className='kpi '+(tv>ti?'lit':'');
   const pnl=tv-ti,pct=ti>0?((tv-ti)/ti)*100:0;
-  el('k-pnl').textContent=fmt(pnl);el('k-pnl').className='kpi-val '+(pnl>0?'c-green':pnl<0?'c-red':'c-muted');
+  el('k-pnl').textContent=fmt(pnl);el('k-pnl-eur').textContent=fmtEur(pnl);el('k-pnl').className='kpi-val '+(pnl>0?'c-green':pnl<0?'c-red':'c-muted');
   el('kpi2').className='kpi '+(pnl>0?'lit':'');
   el('k-pnlpct').textContent=ti>0?fmtPct(pct):'—';
   const w=stocks.filter(s=>s.price>0);
@@ -1073,6 +1073,26 @@ function renderHistoryChart(){
     </svg>`;
 }
 
+
+// ── EUR/USD Exchange Rate ─────────────────────────────────────────
+let usdToEur = parseFloat(localStorage.getItem('usdToEur')||'0.92');
+
+async function fetchEurRate(){
+  try{
+    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1d&range=1d'),{signal:AbortSignal.timeout(8000)});
+    const o=await r.json();
+    const d=JSON.parse(o.contents);
+    const rate=d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if(rate&&rate>0){
+      usdToEur=parseFloat(rate.toFixed(4));
+      localStorage.setItem('usdToEur',usdToEur);
+      const er=el('eurRate');if(er)er.textContent='1 USD = €'+usdToEur;
+    }
+  }catch(e){}
+}
+
+function fmtEur(n){return(n<0?'-':'')+'€'+Math.abs(n*usdToEur).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
 // ── Stock Search ─────────────────────────────────────────────────
 let searchTimer=null;
 async function searchStock(q){
@@ -1197,9 +1217,7 @@ renderDpDays();
 
 // ── Init ─────────────────────────────────────────────────────────
 if(apiKey)el('apiInput').value=apiKey;
-backfillHistory();
-renderPortfolio();
-renderCalendar();
+fetchEurRate().then(()=>{backfillHistory();renderPortfolio();renderCalendar();});
 if((stocks.length||watchlist.length)&&apiKey){refreshAll();startTimer();}
 else if(stocks.length){renderPortfolio();}
 </script>
