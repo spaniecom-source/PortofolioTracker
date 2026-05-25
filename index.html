@@ -179,8 +179,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-rm-w:hover{color:var(--red);background:var(--red2)}
 
 /* ── ANALYTICS PAGE ── */
-#pg-analytics{display:none;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;overflow:hidden}
-#pg-analytics.active{display:grid}
+#pg-analytics{display:none;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr auto;overflow:hidden}
+#pg-analytics.active{display:grid;overflow-y:auto}
 .analytics-panel{padding:18px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);overflow-y:auto}
 .analytics-panel:nth-child(2){border-right:none}
 .analytics-panel:nth-child(3){border-bottom:none}
@@ -226,6 +226,20 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-danger{background:var(--red2);border:1px solid var(--red3);border-radius:5px;color:var(--red);cursor:pointer;font-family:var(--sans);font-size:10px;font-weight:700;padding:7px 14px;letter-spacing:.5px;transition:all .15s}
 .btn-danger:hover{background:var(--red3)}
 
+
+
+.sc-logo{width:28px;height:28px;border-radius:6px;object-fit:contain;background:var(--bg4);padding:3px;flex-shrink:0}
+.sc-logo-wrap{display:flex;align-items:center;gap:8px}
+.search-wrap{position:relative;width:100%}
+.search-results{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;z-index:300;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
+.search-results.open{display:block}
+.search-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border)}
+.search-item:last-child{border-bottom:none}
+.search-item:hover{background:var(--bg4)}
+.search-item-ticker{font-size:12px;font-weight:800;color:var(--text);min-width:50px}
+.search-item-name{font-size:10px;color:var(--text2);flex:1}
+.search-item-type{font-size:8px;color:var(--text3);letter-spacing:.5px}
+.search-loading{padding:10px 12px;font-size:10px;color:var(--text3);text-align:center}
 
 /* Custom date picker */
 .date-input-wrap{position:relative;width:100%}
@@ -307,8 +321,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
     <div class="port-sidebar">
       <div class="sidebar-title">Add Position</div>
-      <div class="field"><label>Ticker</label><input id="fT" placeholder="NVDA" maxlength="8"></div>
-      <div class="field"><label>Company</label><input id="fN" placeholder="Nvidia"></div>
+      <div class="field"><label>Search Stock</label>
+        <div class="search-wrap">
+          <input id="fT" placeholder="Search ticker or name..." autocomplete="off" oninput="searchStock(this.value)" onfocus="if(this.value.length>1)el('searchResults').classList.add('open')" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:7px 10px;color:var(--text);font-family:'Montserrat',sans-serif;font-size:11px;outline:none;transition:border-color .2s">
+          <div class="search-results" id="searchResults"></div>
+        </div>
+        <input type="hidden" id="fN">
+        <input type="hidden" id="fLogo">
+      </div>
       <div class="field"><label>Buy Price ($)</label><input id="fB" type="number" placeholder="105.00" step="0.01" min="0"></div>
       <div class="field"><label>Shares</label><input id="fS" type="number" placeholder="10" step="0.01" min="0"></div>
       <div class="field"><label>Buy Date</label>
@@ -407,6 +427,10 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="analytics-panel">
       <div class="panel-title">Return % by Stock</div>
       <div id="a-return-bars"></div>
+    </div>
+    <div class="analytics-panel" style="grid-column:1/-1;border-right:none">
+      <div class="panel-title">Portfolio Value Over Time</div>
+      <div id="history-panel"></div>
     </div>
   </div>
 
@@ -554,7 +578,7 @@ async function refreshAll(){
       if(ws){ws.price=d.price;ws.chg=d.chg;ws.chgPct=d.chgPct;}
     }
   });
-  save();saveWatch();renderPortfolio();
+  save();saveWatch();renderPortfolio();saveHistorySnapshot();
   const rbtn2=el('refreshBtn');if(rbtn2)rbtn2.textContent='↻ Refresh';
   const sdot2=el('statusDot');if(sdot2)sdot2.className=ok>0?'status-dot live':'status-dot err';
   toast(ok>0?`${ok}/${tickers.length} prices updated`:'Price fetch failed — retry','ok');
@@ -575,15 +599,16 @@ function addStock(){
   if(isNaN(buy)||buy<=0)return ferr('ferr','Valid buy price required.');
   if(isNaN(shares)||shares<=0)return ferr('ferr','Valid share count required.');
   const newBuy={id:Date.now(),shares,buyPrice:buy,date};
+  const logo=el('fLogo').value||'';
   const ex=stocks.find(s=>s.ticker===ticker);
   if(ex){ex.buys.push(newBuy);toast(ticker+' — buy added','ok');}
   else{
-    stocks.push({ticker,name,color:PAL[stocks.length%PAL.length],price:null,chg:null,chgPct:null,buys:[newBuy]});
+    stocks.push({ticker,name,logo,color:PAL[stocks.length%PAL.length],price:null,chg:null,chgPct:null,buys:[newBuy]});
     toast(ticker+' added','ok');
     fetchPrice(ticker).then(d=>{const s=stocks.find(x=>x.ticker===ticker);if(s&&d){s.price=d.price;s.chg=d.chg;s.chgPct=d.chgPct;save();renderPortfolio();}});
   }
   save();renderPortfolio();
-  ['fT','fN','fB','fS','fD'].forEach(id=>el(id).value='');dpSelected=null;el('dateDisplayText').textContent='Select date...';el('dateDisplayText').classList.add('placeholder');
+  ['fT','fN','fB','fS','fD','fLogo'].forEach(id=>el(id).value='');el('searchResults').classList.remove('open');dpSelected=null;el('dateDisplayText').textContent='Select date...';el('dateDisplayText').classList.add('placeholder');
   startTimer();
 }
 
@@ -659,11 +684,15 @@ function renderPortfolio(){
     const dir=prev?cur>prev?'up':cur<prev?'dn':'':'';
     const card=document.createElement('div');
     card.className='scard '+(up?'up':'dn');card.onclick=()=>openModal(s.ticker);
+    const logoUrl=s.logo||`https://assets.parqet.com/logos/symbol/${s.ticker}?format=svg`;
     card.innerHTML=`
       <div class="sc-top">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px"><div class="sc-ticker">${s.ticker}</div><span class="sc-buys">${s.buys.length} buy${s.buys.length!==1?'s':''}</span></div>
-          <div class="sc-name">${s.name}</div>
+        <div class="sc-logo-wrap">
+          <img class="sc-logo" src="${logoUrl}" onerror="this.style.display='none'" alt="">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px"><div class="sc-ticker">${s.ticker}</div><span class="sc-buys">${s.buys.length} buy${s.buys.length!==1?'s':''}</span></div>
+            <div class="sc-name">${s.name}</div>
+          </div>
         </div>
         <div>
           <div class="sc-price ${has?(up?'c-green':'c-red'):'c-muted'}">${has?fmt(s.price):'<span class="blink"></span>'}</div>
@@ -887,8 +916,127 @@ function renderAnalytics(){
   });
   ctx.beginPath();ctx.arc(100,100,55,0,Math.PI*2);ctx.fillStyle='#0f0f0f';ctx.fill();
   el('donutLegend').innerHTML=stocks.map(s=>`<div class="donut-item"><div class="donut-color" style="background:${s.color}"></div><span>${s.ticker}</span></div>`).join('');
+  renderHistoryChart();
 }
 
+
+
+
+// ── Portfolio History ─────────────────────────────────────────────
+function saveHistorySnapshot(){
+  if(!stocks.length)return;
+  const today=new Date().toISOString().split('T')[0];
+  const totalVal=stocks.reduce((a,s)=>{
+    const sh=s.buys.reduce((x,y)=>x+y.shares,0);
+    return a+(s.price||0)*sh;
+  },0);
+  if(totalVal<=0)return;
+  let history=JSON.parse(localStorage.getItem('sp_history')||'[]');
+  const existing=history.findIndex(h=>h.date===today);
+  if(existing>=0)history[existing].value=totalVal;
+  else history.push({date:today,value:totalVal});
+  // Keep last 90 days
+  history=history.slice(-90);
+  localStorage.setItem('sp_history',JSON.stringify(history));
+}
+
+function renderHistoryChart(){
+  const history=JSON.parse(localStorage.getItem('sp_history')||'[]');
+  const panel=el('history-panel');
+  if(!panel)return;
+  if(history.length<2){
+    panel.innerHTML='<div style="font-size:10px;color:var(--text3);padding:20px 0">Not enough data yet. Chart builds automatically each day you visit.</div>';
+    return;
+  }
+  const W=panel.offsetWidth||400,H=160;
+  const min=Math.min(...history.map(h=>h.value))*0.995;
+  const max=Math.max(...history.map(h=>h.value))*1.005;
+  const px=(i)=>Math.round((i/(history.length-1))*W);
+  const py=(v)=>Math.round(H-(((v-min)/(max-min))*H*0.8+H*0.1));
+  const pts=history.map((h,i)=>`${px(i)},${py(h.value)}`).join(' ');
+  const first=history[0].value,last=history[history.length-1].value;
+  const gain=last-first,gainPct=((last-first)/first)*100;
+  const color=gain>=0?'var(--green)':'var(--red)';
+  panel.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--text3);font-family:'Montserrat',sans-serif">${history.length} day${history.length!==1?'s':''} tracked</div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:12px;font-weight:700;color:${color}">${gain>=0?'+':''}${fmt(gain)} (${fmtPct(gainPct)})</div>
+    </div>
+    <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <polygon points="${pts} ${W},${H} 0,${H}" fill="url(#chartGrad)"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${px(history.length-1)}" cy="${py(last)}" r="3" fill="${color}"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-family:'Montserrat',sans-serif;font-size:9px;color:var(--text3)">
+      <span>${history[0].date}</span><span>${history[history.length-1].date}</span>
+    </div>`;
+}
+
+// ── Stock Search ─────────────────────────────────────────────────
+let searchTimer=null;
+async function searchStock(q){
+  const results=el('searchResults');
+  clearTimeout(searchTimer);
+  if(!q||q.length<1){results.classList.remove('open');return}
+  results.classList.add('open');
+  results.innerHTML='<div class="search-loading">Searching...</div>';
+  searchTimer=setTimeout(async()=>{
+    if(!apiKey){
+      // Without API key, show common tickers
+      const common=[
+        {symbol:'NVDA',description:'NVIDIA Corporation'},
+        {symbol:'MSFT',description:'Microsoft Corporation'},
+        {symbol:'AAPL',description:'Apple Inc.'},
+        {symbol:'GOOGL',description:'Alphabet Inc.'},
+        {symbol:'META',description:'Meta Platforms Inc.'},
+        {symbol:'AMZN',description:'Amazon.com Inc.'},
+        {symbol:'TSLA',description:'Tesla Inc.'},
+        {symbol:'PLTR',description:'Palantir Technologies'},
+        {symbol:'MU',description:'Micron Technology'},
+        {symbol:'RTX',description:'RTX Corporation'},
+        {symbol:'KTOS',description:'Kratos Defense & Security'},
+        {symbol:'AMD',description:'Advanced Micro Devices'},
+        {symbol:'INTC',description:'Intel Corporation'},
+        {symbol:'ORCL',description:'Oracle Corporation'},
+      ].filter(s=>s.symbol.includes(q.toUpperCase())||s.description.toLowerCase().includes(q.toLowerCase()));
+      renderSearchResults(common.slice(0,6));
+      return;
+    }
+    try{
+      const r=await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${apiKey}`);
+      const d=await r.json();
+      const items=(d.result||[]).filter(s=>s.type==='Common Stock'||s.type==='').slice(0,6);
+      renderSearchResults(items);
+    }catch(e){results.innerHTML='<div class="search-loading">Search unavailable</div>'}
+  },400);
+}
+
+function renderSearchResults(items){
+  const results=el('searchResults');
+  if(!items.length){results.innerHTML='<div class="search-loading">No results found</div>';return}
+  results.innerHTML=items.map(s=>`
+    <div class="search-item" onclick="selectStock('${s.symbol}','${(s.description||s.displaySymbol||s.symbol).replace(/'/g,'\'')}')">
+      <div class="search-item-ticker">${s.symbol}</div>
+      <div class="search-item-name">${s.description||s.displaySymbol||''}</div>
+    </div>`).join('');
+}
+
+function selectStock(ticker,name){
+  el('fT').value=ticker;
+  el('fN').value=name;
+  el('fLogo').value=`https://assets.parqet.com/logos/symbol/${ticker}?format=svg`;
+  el('searchResults').classList.remove('open');
+  el('fB').focus();
+}
+
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.search-wrap');
+  if(wrap&&!wrap.contains(e.target))el('searchResults').classList.remove('open');
+});
 
 // ── Custom Date Picker ────────────────────────────────────────────
 let dpDate=new Date();
