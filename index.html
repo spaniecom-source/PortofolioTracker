@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 <title>SP's Portfolio</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -241,6 +241,22 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .search-item-type{font-size:8px;color:var(--text3);letter-spacing:.5px}
 .search-loading{padding:10px 12px;font-size:10px;color:var(--text3);text-align:center}
 
+
+.export-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:5px 12px;color:var(--text2);font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all .15s}
+.export-btn:hover{border-color:var(--gold);color:var(--gold)}
+.import-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:600;align-items:center;justify-content:center;padding:20px}
+.import-overlay.open{display:flex}
+.import-box{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px;width:100%;max-width:480px}
+.import-title{font-size:13px;font-weight:800;letter-spacing:1px;margin-bottom:6px}
+.import-sub{font-size:10px;color:var(--text3);margin-bottom:16px;line-height:1.6}
+.import-textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px;color:var(--text);font-family:'Montserrat',sans-serif;font-size:10px;outline:none;resize:vertical;min-height:120px;transition:border-color .2s}
+.import-textarea:focus{border-color:var(--gold)}
+.import-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.import-cancel{background:none;border:1px solid var(--border2);border-radius:5px;padding:8px 16px;color:var(--text2);font-family:'Montserrat',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s}
+.import-cancel:hover{border-color:var(--border3);color:var(--text)}
+.import-confirm{background:var(--gold);border:none;border-radius:5px;padding:8px 16px;color:#000;font-family:'Montserrat',sans-serif;font-size:10px;font-weight:800;cursor:pointer;transition:opacity .15s}
+.import-confirm:hover{opacity:.85}
+
 /* Custom date picker */
 .date-input-wrap{position:relative;width:100%}
 .date-display{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:7px 10px;color:var(--text);font-family:'Montserrat',sans-serif;font-size:11px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;justify-content:space-between;user-select:none}
@@ -298,7 +314,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <label>API</label>
       <input class="api-input" id="apiInput" placeholder="Finnhub key..." oninput="onApiKey(this.value)">
     </div>
-    <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">↻ Refresh</button>
+    <button class="export-btn" onclick="exportData()">↑ Export</button><button class="export-btn" onclick="openImport()">↓ Import</button><button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">↻ Refresh</button>
   </div>
 </div>
 
@@ -441,6 +457,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="modal-box" id="modalBox"></div>
 </div>
 
+<div class="import-overlay" id="importOverlay">
+  <div class="import-box">
+    <div class="import-title">Import Portfolio Data</div>
+    <div class="import-sub">Paste the code you exported from another device. This will merge with your current data — existing stocks won't be duplicated.</div>
+    <textarea class="import-textarea" id="importText" placeholder="Paste your export code here..."></textarea>
+    <div class="import-actions">
+      <button class="import-cancel" onclick="closeImport()">Cancel</button>
+      <button class="import-confirm" onclick="importData()">Import</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -922,6 +949,76 @@ function renderAnalytics(){
 
 
 
+
+
+// ── Export / Import ───────────────────────────────────────────────
+function exportData(){
+  const data={
+    stocks:JSON.parse(localStorage.getItem('sp_v1')||'[]'),
+    watchlist:JSON.parse(localStorage.getItem('sp_watch')||'[]'),
+    history:JSON.parse(localStorage.getItem('sp_history')||'[]'),
+    exported:new Date().toISOString()
+  };
+  const encoded=btoa(JSON.stringify(data));
+  // Copy to clipboard
+  navigator.clipboard.writeText(encoded).then(()=>{
+    toast('Copied to clipboard — paste it on your other device','ok');
+  }).catch(()=>{
+    // Fallback: show in a prompt
+    prompt('Copy this export code:',encoded);
+  });
+}
+
+function openImport(){
+  el('importOverlay').classList.add('open');
+  el('importText').value='';
+  setTimeout(()=>el('importText').focus(),100);
+}
+
+function closeImport(){
+  el('importOverlay').classList.remove('open');
+}
+
+function importData(){
+  const raw=el('importText').value.trim();
+  if(!raw)return toast('Paste your export code first','err');
+  try{
+    const data=JSON.parse(atob(raw));
+    // Merge stocks — don't duplicate tickers
+    const existing=JSON.parse(localStorage.getItem('sp_v1')||'[]');
+    const incoming=data.stocks||[];
+    incoming.forEach(s=>{
+      if(!existing.find(e=>e.ticker===s.ticker))existing.push(s);
+    });
+    localStorage.setItem('sp_v1',JSON.stringify(existing));
+    // Merge watchlist
+    const existingW=JSON.parse(localStorage.getItem('sp_watch')||'[]');
+    const incomingW=data.watchlist||[];
+    incomingW.forEach(w=>{
+      if(!existingW.find(e=>e.ticker===w.ticker))existingW.push(w);
+    });
+    localStorage.setItem('sp_watch',JSON.stringify(existingW));
+    // Merge history
+    const existingH=JSON.parse(localStorage.getItem('sp_history')||'[]');
+    const incomingH=data.history||[];
+    const existingDates=new Set(existingH.map(h=>h.date));
+    incomingH.forEach(h=>{if(!existingDates.has(h.date))existingH.push(h)});
+    existingH.sort((a,b)=>a.date.localeCompare(b.date));
+    localStorage.setItem('sp_history',JSON.stringify(existingH.slice(-90)));
+    // Reload
+    stocks=JSON.parse(localStorage.getItem('sp_v1')||'[]');
+    watchlist=JSON.parse(localStorage.getItem('sp_watch')||'[]');
+    closeImport();
+    renderPortfolio();
+    toast('Import successful — '+incoming.length+' stocks imported','ok');
+    if(apiKey)refreshAll();
+  }catch(e){
+    toast('Invalid export code — try again','err');
+  }
+}
+
+// Close import on overlay click
+el('importOverlay').onclick=e=>{if(e.target===el('importOverlay'))closeImport()};
 
 // ── Backfill History from Buy Dates ──────────────────────────────
 function backfillHistory(){
