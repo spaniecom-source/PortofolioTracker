@@ -57,7 +57,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .page.active{display:grid}
 
 /* ── PORTFOLIO PAGE ── */
-#pg-portfolio{grid-template-columns:1fr 260px;grid-template-rows:auto 1fr;overflow:hidden}
+#pg-portfolio{grid-template-columns:1fr 220px;grid-template-rows:auto 1fr;overflow:hidden}
 .port-top{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--border);background:var(--bg2)}
 .kpi{padding:14px 20px;border-right:1px solid var(--border);position:relative;overflow:hidden}
 .kpi:last-child{border-right:none}
@@ -72,7 +72,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .port-sidebar{background:var(--bg2);border-left:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 
 /* STOCK CARDS */
-.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
 .scard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px 22px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .15s;position:relative;overflow:hidden}
 .scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
 .scard.up::before{background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:1}
@@ -449,43 +449,48 @@ function onApiKey(val){
 
 // ── Price fetch (multi-source) ───────────────────────────────────
 async function fetchPrice(ticker){
-  // Try 4 different proxy/source combos
-  const proxies=[
-    'https://api.allorigins.win/get?url=',
-    'https://corsproxy.io/?url=',
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://thingproxy.freeboard.io/fetch/'
-  ];
-  const yahoo1=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
-  const yahoo2=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
-  const urls=[
-    [proxies[0]+encodeURIComponent(yahoo1), true],
-    [proxies[1]+encodeURIComponent(yahoo1), false],
-    [proxies[0]+encodeURIComponent(yahoo2), true],
-    [proxies[2]+encodeURIComponent(yahoo2), false],
-  ];
-  for(const [url, isWrapped] of urls){
-    try{
-      const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-      const outer=await r.json();
-      const d=isWrapped?JSON.parse(outer.contents):outer;
+  // Primary: Yahoo Finance via allorigins
+  try{
+    const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1m&range=1d&includePrePost=false');
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    if(r.ok){
+      const o=await r.json();
+      if(o&&o.contents){
+        const d=JSON.parse(o.contents);
+        const meta=d?.chart?.result?.[0]?.meta;
+        if(meta&&meta.regularMarketPrice>0){
+          const cur=meta.regularMarketPrice;
+          const prev=meta.previousClose||cur;
+          return{price:cur,chg:+(cur-prev).toFixed(2),chgPct:+((cur-prev)/prev*100).toFixed(2)};
+        }
+      }
+    }
+  }catch(e){}
+  // Fallback: corsproxy
+  try{
+    const url='https://corsproxy.io/?url='+encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1m&range=1d');
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    if(r.ok){
+      const d=await r.json();
       const meta=d?.chart?.result?.[0]?.meta;
-      if(!meta)continue;
-      const cur=meta.regularMarketPrice||meta.previousClose;
-      const prev=meta.previousClose||cur;
-      if(!cur||cur<=0)continue;
-      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
-    }catch(e){continue}
-  }
-  // Last resort: Finnhub
+      if(meta&&meta.regularMarketPrice>0){
+        const cur=meta.regularMarketPrice;
+        const prev=meta.previousClose||cur;
+        return{price:cur,chg:+(cur-prev).toFixed(2),chgPct:+((cur-prev)/prev*100).toFixed(2)};
+      }
+    }
+  }catch(e){}
+  // Fallback: Finnhub
   if(apiKey){
     try{
-      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
-      const d=await r.json();if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};
+      const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+ticker+'&token='+apiKey,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      if(d&&d.c>0)return{price:d.c,chg:+(d.d||0).toFixed(2),chgPct:+(d.dp||0).toFixed(2)};
     }catch(e){}
   }
   return null;
 }
+
 
 async function refreshAll(){
   if(!stocks.length&&!watchlist.length)return;
