@@ -236,13 +236,46 @@ function ferr(msg){const el=e('ferr');el.textContent=msg;clearTimeout(el._t);el.
 
 // ── Price fetch ───────────────────────────────────────────────────
 async function fetchPrice(ticker){
-  if(!apiKey)return null;
-  try{
-    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
-    const d=await r.json();
-    if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};
-    return null;
-  }catch(err){return null}
+  // Try multiple free sources in order
+  const sources=[
+    // Source 1: Yahoo Finance via allorigins proxy
+    async()=>{
+      const yahoo=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
+      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yahoo)}`,{signal:AbortSignal.timeout(8000)});
+      const outer=await r.json();
+      const d=JSON.parse(outer.contents);
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(!meta)return null;
+      const cur=meta.regularMarketPrice;
+      const prev=meta.previousClose||cur;
+      if(!cur||cur<=0)return null;
+      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
+    },
+    // Source 2: Yahoo Finance via corsproxy
+    async()=>{
+      const yahoo=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
+      const r=await fetch(`https://corsproxy.io/?url=${encodeURIComponent(yahoo)}`,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(!meta)return null;
+      const cur=meta.regularMarketPrice;
+      const prev=meta.previousClose||cur;
+      if(!cur||cur<=0)return null;
+      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
+    },
+    // Source 3: Finnhub if key available
+    async()=>{
+      if(!apiKey)return null;
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};
+      return null;
+    }
+  ];
+  for(const src of sources){
+    try{const result=await src();if(result)return result;}catch(e){continue}
+  }
+  return null;
 }
 
 async function refreshAll(){
