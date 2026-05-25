@@ -72,23 +72,23 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .port-sidebar{background:var(--bg2);border-left:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 
 /* STOCK CARDS */
-.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.scard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:15px 16px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .15s;position:relative;overflow:hidden}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px 22px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .15s;position:relative;overflow:hidden}
 .scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;opacity:0;transition:opacity .3s}
 .scard.up::before{background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:1}
 .scard.dn::before{background:linear-gradient(90deg,transparent,var(--red),transparent);opacity:1}
 .scard:hover{border-color:var(--border3);transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,0.5)}
 .sc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.sc-ticker{font-size:16px;font-weight:900;letter-spacing:.5px}
+.sc-ticker{font-size:20px;font-weight:900;letter-spacing:.5px}
 .sc-name{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:.3px}
 .sc-buys{font-size:8px;background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;color:var(--text3);letter-spacing:.5px;margin-top:4px;display:inline-block}
-.sc-price{font-family:var(--mono);font-size:17px;font-weight:700;text-align:right;letter-spacing:-.5px}
+.sc-price{font-family:var(--mono);font-size:21px;font-weight:700;text-align:right;letter-spacing:-.5px}
 .sc-chg{font-family:var(--mono);font-size:9px;text-align:right;margin-top:3px}
 .sc-divider{height:1px;background:var(--border);margin-bottom:11px}
 .sc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .sc-stat-l{font-size:8px;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px}
-.sc-stat-v{font-family:var(--mono);font-size:11px;font-weight:500}
-.pnl-v{font-family:var(--mono);font-size:13px;font-weight:700}
+.sc-stat-v{font-family:var(--mono);font-size:13px;font-weight:500}
+.pnl-v{font-family:var(--mono);font-size:15px;font-weight:700}
 .pill{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:700}
 .pill.up{background:var(--green2);border:1px solid var(--green3);color:var(--green)}
 .pill.dn{background:var(--red2);border:1px solid var(--red3);color:var(--red)}
@@ -357,7 +357,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
     <div class="analytics-panel">
       <div class="panel-title">Allocation by Value</div>
-      <div class="donut-wrap"><canvas id="donutCanvas" width="140" height="140"></canvas><div class="donut-legend" id="donutLegend"></div></div>
+      <div class="donut-wrap"><canvas id="donutCanvas" width="200" height="200"></canvas><div class="donut-legend" id="donutLegend"></div></div>
     </div>
     <div class="analytics-panel">
       <div class="panel-title">Return % by Stock</div>
@@ -449,31 +449,41 @@ function onApiKey(val){
 
 // ── Price fetch (multi-source) ───────────────────────────────────
 async function fetchPrice(ticker){
-  const sources=[
-    async()=>{
-      const y=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
-      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(y)}`,{signal:AbortSignal.timeout(8000)});
-      const o=await r.json();const d=JSON.parse(o.contents);
-      const meta=d?.chart?.result?.[0]?.meta;if(!meta)return null;
-      const cur=meta.regularMarketPrice;const prev=meta.previousClose||cur;
-      if(!cur||cur<=0)return null;
-      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
-    },
-    async()=>{
-      const y=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
-      const r=await fetch(`https://corsproxy.io/?url=${encodeURIComponent(y)}`,{signal:AbortSignal.timeout(8000)});
-      const d=await r.json();const meta=d?.chart?.result?.[0]?.meta;if(!meta)return null;
-      const cur=meta.regularMarketPrice;const prev=meta.previousClose||cur;
-      if(!cur||cur<=0)return null;
-      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
-    },
-    async()=>{
-      if(!apiKey)return null;
-      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
-      const d=await r.json();if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};return null;
-    }
+  // Try 4 different proxy/source combos
+  const proxies=[
+    'https://api.allorigins.win/get?url=',
+    'https://corsproxy.io/?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://thingproxy.freeboard.io/fetch/'
   ];
-  for(const src of sources){try{const res=await src();if(res)return res;}catch(e){continue}}
+  const yahoo1=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
+  const yahoo2=`https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d`;
+  const urls=[
+    [proxies[0]+encodeURIComponent(yahoo1), true],
+    [proxies[1]+encodeURIComponent(yahoo1), false],
+    [proxies[0]+encodeURIComponent(yahoo2), true],
+    [proxies[2]+encodeURIComponent(yahoo2), false],
+  ];
+  for(const [url, isWrapped] of urls){
+    try{
+      const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
+      const outer=await r.json();
+      const d=isWrapped?JSON.parse(outer.contents):outer;
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(!meta)continue;
+      const cur=meta.regularMarketPrice||meta.previousClose;
+      const prev=meta.previousClose||cur;
+      if(!cur||cur<=0)continue;
+      return{price:cur,chg:cur-prev,chgPct:((cur-prev)/prev)*100};
+    }catch(e){continue}
+  }
+  // Last resort: Finnhub
+  if(apiKey){
+    try{
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();if(d&&d.c&&d.c>0)return{price:d.c,chg:d.d,chgPct:d.dp};
+    }catch(e){}
+  }
   return null;
 }
 
@@ -494,7 +504,7 @@ async function refreshAll(){
       if(ws){ws.price=d.price;ws.chg=d.chg;ws.chgPct=d.chgPct;}
       if(ok===1){const sd=el('statusDot');if(sd)sd.className='status-dot live';save();saveWatch();renderPortfolio();}
     }
-    if(i<all.length-1)await sleep(300);
+    if(i<all.length-1)await sleep(1500);
   }
   save();saveWatch();renderPortfolio();
   const rbtn2=el('refreshBtn');if(rbtn2)rbtn2.textContent='↻ Refresh';
@@ -818,16 +828,16 @@ function renderAnalytics(){
 
   // Donut chart
   const canvas=el('donutCanvas');const ctx=canvas.getContext('2d');
-  ctx.clearRect(0,0,140,140);
+  ctx.clearRect(0,0,200,200);
   const total=stocks.reduce((a,s)=>{const sh=s.buys.reduce((x,y)=>x+y.shares,0);return a+(s.price||s.buys[0].buyPrice)*sh},0);
   let start=-Math.PI/2;
   stocks.forEach(s=>{
     const sh=s.buys.reduce((a,b)=>a+b.shares,0);const v=(s.price||s.buys[0].buyPrice)*sh;
     const slice=(v/total)*Math.PI*2;
-    ctx.beginPath();ctx.moveTo(70,70);ctx.arc(70,70,60,start,start+slice);ctx.closePath();
+    ctx.beginPath();ctx.moveTo(100,100);ctx.arc(100,100,90,start,start+slice);ctx.closePath();
     ctx.fillStyle=s.color;ctx.fill();start+=slice;
   });
-  ctx.beginPath();ctx.arc(70,70,38,0,Math.PI*2);ctx.fillStyle='#0f0f0f';ctx.fill();
+  ctx.beginPath();ctx.arc(100,100,55,0,Math.PI*2);ctx.fillStyle='#0f0f0f';ctx.fill();
   el('donutLegend').innerHTML=stocks.map(s=>`<div class="donut-item"><div class="donut-color" style="background:${s.color}"></div><span>${s.ticker}</span></div>`).join('');
 }
 
