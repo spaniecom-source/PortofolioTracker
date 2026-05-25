@@ -1195,52 +1195,61 @@ el('importOverlay').onclick=e=>{if(e.target===el('importOverlay'))closeImport()}
 
 
 // ── Sparklines ────────────────────────────────────────────────────
-async function fetchSparkline(ticker){
-  try{
-    const y=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1mo`;
-    const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(y)}`,{signal:AbortSignal.timeout(8000)});
-    const o=await r.json();const d=JSON.parse(o.contents);
-    const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-    return closes?closes.filter(v=>v!=null):null;
-  }catch(e){return null}
+async function fetchSparkline(ticker, proxyIndex){
+  const proxies=[
+    t=>'https://api.allorigins.win/get?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1mo'),
+    t=>'https://corsproxy.io/?url='+encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1mo'),
+    t=>'https://api.allorigins.win/get?url='+encodeURIComponent('https://query2.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1mo'),
+    t=>'https://corsproxy.io/?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=1mo'),
+  ];
+  const proxyFns=[proxies[proxyIndex%proxies.length],...proxies.filter((_,j)=>j!==proxyIndex%proxies.length)];
+  for(const fn of proxyFns){
+    try{
+      const r=await fetch(fn(ticker),{signal:AbortSignal.timeout(10000)});
+      const o=await r.json();
+      const raw=o.contents||o;
+      const d=typeof raw==='string'?JSON.parse(raw):raw;
+      const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if(closes)return closes.filter(v=>v!=null);
+    }catch(e){continue}
+  }
+  return null;
+}
+
+function drawSparklinesOnCanvas(canvas, data){
+  const ctx=canvas.getContext('2d');
+  const w=canvas.offsetWidth||280,h=36;
+  canvas.width=w;canvas.height=h;
+  if(!data||data.length<2){
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+    return;
+  }
+  const min=Math.min(...data),max=Math.max(...data),range=max-min||1;
+  const px=i=>(i/(data.length-1))*w;
+  const py=v=>h-((v-min)/range)*h*0.8-h*0.1;
+  const up=data[data.length-1]>=data[0];
+  const color=up?'#00D97E':'#FF4560';
+  ctx.beginPath();
+  ctx.moveTo(px(0),py(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(px(i),py(v)));
+  ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
+  ctx.fillStyle=up?'rgba(0,217,126,0.07)':'rgba(255,69,96,0.07)';ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(px(0),py(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(px(i),py(v)));
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
 }
 
 async function drawSparklines(){
-  for(const s of stocks){
+  // Fetch all sparklines in parallel using different proxies per ticker
+  await Promise.all(stocks.map(async(s,i)=>{
+    await sleep(i*600); // stagger starts to avoid hammering
     const canvas=document.getElementById('spark-'+s.ticker);
-    if(!canvas)continue;
-    const data=await fetchSparkline(s.ticker);
-    if(!data||data.length<2){
-      // Draw flat line if no data
-      const ctx=canvas.getContext('2d');
-      const w=canvas.offsetWidth||280,h=36;
-      canvas.width=w;canvas.height=h;
-      ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
-      continue;
-    }
-    const ctx=canvas.getContext('2d');
-    const w=canvas.offsetWidth||280,h=36;
-    canvas.width=w;canvas.height=h;
-    const min=Math.min(...data),max=Math.max(...data),range=max-min||1;
-    const px=i=>(i/(data.length-1))*w;
-    const py=v=>h-((v-min)/range)*h*0.8-h*0.1;
-    const up=data[data.length-1]>=data[0];
-    const color=up?'#00D97E':'#FF4560';
-    // Fill
-    ctx.beginPath();
-    ctx.moveTo(px(0),py(data[0]));
-    data.forEach((v,i)=>ctx.lineTo(px(i),py(v)));
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
-    ctx.fillStyle=up?'rgba(0,217,126,0.08)':'rgba(255,69,96,0.08)';
-    ctx.fill();
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(px(0),py(data[0]));
-    data.forEach((v,i)=>ctx.lineTo(px(i),py(v)));
-    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
-    await sleep(200);
-  }
+    if(!canvas)return;
+    const data=await fetchSparkline(s.ticker,i);
+    drawSparklinesOnCanvas(canvas,data);
+  }));
 }
 
 // ── Analyst Targets + Social Sentiment (via Finnhub) ─────────────
