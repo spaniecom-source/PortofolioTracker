@@ -259,7 +259,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <label>API</label>
       <input class="api-input" id="apiInput" placeholder="Finnhub key..." oninput="onApiKey(this.value)">
     </div>
-    <button class="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">↻ Refresh</button>
   </div>
 </div>
 
@@ -479,8 +479,8 @@ async function fetchPrice(ticker){
 
 async function refreshAll(){
   if(!stocks.length&&!watchlist.length)return;
-  el('refreshBtn').textContent='↻ ...';
-  el('statusDot').className='status-dot loading';
+  const rbtn=el('refreshBtn');if(rbtn)rbtn.textContent='↻ ...';
+  const sdot=el('statusDot');if(sdot)sdot.className='status-dot loading';
   const all=[...stocks,...watchlist.filter(w=>!stocks.find(s=>s.ticker===w.ticker))];
   let ok=0;
   for(let i=0;i<all.length;i++){
@@ -492,13 +492,13 @@ async function refreshAll(){
       // Also update watchlist entry if same ticker
       const ws=watchlist.find(w=>w.ticker===item.ticker);
       if(ws){ws.price=d.price;ws.chg=d.chg;ws.chgPct=d.chgPct;}
-      if(ok===1){el('statusDot').className='status-dot live';save();saveWatch();renderPortfolio();}
+      if(ok===1){const sd=el('statusDot');if(sd)sd.className='status-dot live';save();saveWatch();renderPortfolio();}
     }
     if(i<all.length-1)await sleep(300);
   }
   save();saveWatch();renderPortfolio();
-  el('refreshBtn').textContent='↻ Refresh';
-  el('statusDot').className=ok>0?'status-dot live':'status-dot err';
+  const rbtn2=el('refreshBtn');if(rbtn2)rbtn2.textContent='↻ Refresh';
+  const sdot2=el('statusDot');if(sdot2)sdot2.className=ok>0?'status-dot live':'status-dot err';
   toast(ok>0?`${ok} prices updated`:'Price fetch failed — retry','ok');
 }
 
