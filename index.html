@@ -417,9 +417,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <!-- PORTFOLIO -->
   <div class="page active" id="pg-portfolio">
     <div class="port-top">
-      <div class="kpi lit" id="kpi0"><div class="kpi-bar"></div><div class="kpi-label">Total Invested</div><div class="kpi-val c-gold" id="k-invested">$0.00</div><div class="kpi-sub" id="k-invested-eur" style="color:var(--gold);opacity:0.6">€0.00</div><div class="kpi-sub" id="k-pos">0 positions</div></div>
-      <div class="kpi" id="kpi1"><div class="kpi-bar"></div><div class="kpi-label">Portfolio Value</div><div class="kpi-val c-muted" id="k-value">$0.00</div><div class="kpi-sub" id="k-value-eur">€0.00</div><div class="kpi-sub">mark-to-market</div></div>
-      <div class="kpi" id="kpi2"><div class="kpi-bar"></div><div class="kpi-label">Total P&L</div><div class="kpi-val c-muted" id="k-pnl">$0.00</div><div class="kpi-sub" id="k-pnl-eur">€0.00</div><div class="kpi-sub" id="k-pnlpct">—</div></div>
+      <div class="kpi lit" id="kpi0"><div class="kpi-bar"></div><div class="kpi-label">Total Invested</div><div class="kpi-val c-gold" id="k-invested">$0.00</div><div id="k-invested-eur" style="font-size:14px;font-weight:700;color:var(--gold);opacity:0.7;margin-bottom:3px">€0.00</div><div class="kpi-sub" id="k-pos">0 positions</div></div>
+      <div class="kpi" id="kpi1"><div class="kpi-bar"></div><div class="kpi-label">Portfolio Value</div><div class="kpi-val c-muted" id="k-value">$0.00</div><div id="k-value-eur" style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:3px">€0.00</div><div class="kpi-sub">mark-to-market</div></div>
+      <div class="kpi" id="kpi2"><div class="kpi-bar"></div><div class="kpi-label">Total P&L</div><div class="kpi-val c-muted" id="k-pnl">$0.00</div><div id="k-pnl-eur" style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:3px">€0.00</div><div class="kpi-sub" id="k-pnlpct">—</div></div>
       <div class="kpi" id="kpi3"><div class="kpi-bar"></div><div class="kpi-label">Best Performer</div><div class="kpi-val c-muted" id="k-best" style="font-size:15px">—</div><div class="kpi-sub" id="k-bestpct">—</div></div>
       <div class="kpi" id="kpi4"><div class="kpi-bar"></div><div class="kpi-label">Worst Performer</div><div class="kpi-val c-muted" id="k-worst" style="font-size:15px">—</div><div class="kpi-sub" id="k-worstpct">—</div></div>
     </div>
@@ -1500,7 +1500,8 @@ function renderHistoryChart(){
 
 
 // ── EUR/USD Exchange Rate ─────────────────────────────────────────
-let usdToEur = parseFloat(localStorage.getItem('usdToEur')||'0.92');
+localStorage.removeItem('usdToEur'); // clear old wrong rate
+let usdToEur = 0.92;
 
 async function fetchEurRate(){
   try{
