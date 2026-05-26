@@ -1500,7 +1500,6 @@ function renderHistoryChart(){
 
 
 // ── EUR/USD Exchange Rate ─────────────────────────────────────────
-localStorage.removeItem('usdToEur'); // clear old wrong rate
 let usdToEur = 0.92;
 
 async function fetchEurRate(){
@@ -1508,10 +1507,9 @@ async function fetchEurRate(){
     const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1d&range=1d'),{signal:AbortSignal.timeout(8000)});
     const o=await r.json();
     const d=JSON.parse(o.contents);
-    const rate=d?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if(rate&&rate>0){
-      usdToEur=parseFloat(rate.toFixed(4));
-      localStorage.setItem('usdToEur',usdToEur);
+    const eurUsd=d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if(eurUsd&&eurUsd>0){
+      usdToEur=parseFloat((1/eurUsd).toFixed(4));
       const er=el('eurRate');if(er)er.textContent='1 USD = €'+usdToEur;
     }
   }catch(e){}
