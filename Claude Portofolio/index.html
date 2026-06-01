@@ -862,7 +862,7 @@ function renderPortfolio(){
     el('emptyState').style.display='flex';
     renderKPIs(0,0);renderAlloc([]);return;
   }
-  el('emptyState').style.display='none';grid.innerHTML='';
+  const emptyEl=el('emptyState');if(emptyEl)emptyEl.style.display='none';grid.innerHTML='';
   let ti=0,tv=0,totalRealized=0;
   stocks.forEach(s=>{
     const totalBought=s.buys.reduce((a,b)=>a+b.shares,0);
