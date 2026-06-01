@@ -225,6 +225,20 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .modal-footer{display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 .btn-danger{background:var(--red2);border:1px solid var(--red3);border-radius:5px;color:var(--red);cursor:pointer;font-family:var(--sans);font-size:10px;font-weight:700;padding:7px 14px;letter-spacing:.5px;transition:all .15s}
 .btn-danger:hover{background:var(--red3)}
+.sell-row{display:grid;grid-template-columns:80px 70px 80px 1fr 28px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,69,96,0.12)}
+.btn-sell-open{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:5px;color:var(--gold);cursor:pointer;font-family:var(--sans);font-size:10px;font-weight:700;padding:7px 14px;letter-spacing:.5px;transition:all .15s}
+.btn-sell-open:hover{background:rgba(201,168,76,0.15)}
+.sell-inline{background:var(--bg3);border:1px solid rgba(255,69,96,0.2);border-radius:6px;padding:12px;margin-top:12px;display:none}
+.sell-inline.open{display:block}
+.sell-inline-title{font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+.sell-inline-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.sell-field-label{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:3px;font-weight:600}
+.sell-inline input{width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:6px 8px;color:var(--text);font-family:'Montserrat',sans-serif;font-size:11px;outline:none;transition:border-color .2s}
+.sell-inline input:focus{border-color:rgba(255,69,96,0.5)}
+.btn-confirm-sell{background:var(--red2);border:1px solid var(--red3);border-radius:5px;color:var(--red);cursor:pointer;font-family:var(--sans);font-size:10px;font-weight:700;padding:7px 14px;letter-spacing:.5px;transition:all .15s}
+.btn-confirm-sell:hover{background:var(--red3)}
+.btn-cancel-sell{background:none;border:1px solid var(--border2);border-radius:5px;padding:7px 14px;color:var(--text2);font-family:var(--sans);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel-sell:hover{border-color:var(--border3);color:var(--text)}
 
 
 
@@ -750,6 +764,27 @@ function removeBuy(ticker,id){
   save();renderPortfolio();
   if(stocks.find(x=>x.ticker===ticker))openModal(ticker);
 }
+function sellPosition(ticker){
+  const s=stocks.find(x=>x.ticker===ticker);if(!s)return;
+  const totalBought=s.buys.reduce((a,b)=>a+b.shares,0);
+  const totalSold=(s.sells||[]).reduce((a,b)=>a+b.shares,0);
+  const sharesHeld=totalBought-totalSold;
+  const shares=parseFloat(el('sShares').value);
+  const price=parseFloat(el('sPrice').value);
+  const date=el('sDate').value||new Date().toISOString().split('T')[0];
+  if(isNaN(shares)||shares<=0)return ferr('sellErr','Enter shares sold.');
+  if(isNaN(price)||price<=0)return ferr('sellErr','Enter sell price.');
+  if(shares>sharesHeld+0.0001)return ferr('sellErr',`Max ${sharesHeld%1===0?sharesHeld:sharesHeld.toFixed(4)} shares held.`);
+  if(!s.sells)s.sells=[];
+  s.sells.push({id:Date.now(),shares,sellPrice:price,date});
+  save();renderPortfolio();openModal(ticker);
+  toast(ticker+' — sale recorded','ok');
+}
+function removeSell(ticker,id){
+  const s=stocks.find(x=>x.ticker===ticker);if(!s||!s.sells)return;
+  s.sells=s.sells.filter(b=>b.id!==id);
+  save();renderPortfolio();openModal(ticker);
+}
 
 // ── Watchlist ────────────────────────────────────────────────────
 function addWatch(){
@@ -770,24 +805,50 @@ function removeWatch(ticker){watchlist=watchlist.filter(w=>w.ticker!==ticker);sa
 // ── Modal ─────────────────────────────────────────────────────────
 function openModal(ticker){
   const s=stocks.find(x=>x.ticker===ticker);if(!s)return;
-  const sh=s.buys.reduce((a,b)=>a+b.shares,0);
+  const totalBought=s.buys.reduce((a,b)=>a+b.shares,0);
+  const totalSold=(s.sells||[]).reduce((a,b)=>a+b.shares,0);
+  const sh=totalBought-totalSold;
   const inv=s.buys.reduce((a,b)=>a+b.buyPrice*b.shares,0);
-  const avg=inv/sh;const has=s.price>0;
-  const pnl=has?(s.price-avg)*sh:0;const pct=has?((s.price-avg)/avg)*100:0;
+  const avg=inv/totalBought;
+  const realizedPnl=(s.sells||[]).reduce((a,b)=>a+(b.sellPrice-avg)*b.shares,0);
+  const closed=sh<=0.0001;
+  const has=!closed&&s.price>0;
+  const unrealizedPnl=has?(s.price-avg)*sh:0;
+  const totalPnl=unrealizedPnl+realizedPnl;
+  const pct=closed?(totalSold>0?(realizedPnl/(avg*totalSold))*100:0):has?((s.price-avg)/avg)*100:0;
   el('modalBox').innerHTML=`
     <div class="modal-header">
-      <div><div class="modal-ticker">${s.ticker}</div><div class="modal-name">${s.name}</div></div>
+      <div><div class="modal-ticker">${s.ticker}${closed?' <span style="font-size:11px;background:rgba(255,69,96,0.12);border:1px solid rgba(255,69,96,0.25);border-radius:3px;padding:2px 7px;color:var(--red);font-weight:700;vertical-align:middle;letter-spacing:.5px">CLOSED</span>':''}</div><div class="modal-name">${s.name}</div></div>
       <button class="modal-close" onclick="closeModal()">✕ Close</button>
     </div>
     <div class="modal-kpis">
-      <div class="modal-kpi"><div class="modal-kpi-l">Shares</div><div class="modal-kpi-v">${sh%1===0?sh:sh.toFixed(4)}</div></div>
+      <div class="modal-kpi"><div class="modal-kpi-l">${closed?'Shares Sold':'Shares Held'}</div><div class="modal-kpi-v">${closed?(totalSold%1===0?totalSold:totalSold.toFixed(4)):(sh%1===0?sh:sh.toFixed(4))}</div></div>
       <div class="modal-kpi"><div class="modal-kpi-l">Avg Buy</div><div class="modal-kpi-v">${fmt(avg)}</div></div>
-      <div class="modal-kpi"><div class="modal-kpi-l">Current</div><div class="modal-kpi-v" style="color:${has?(pct>=0?'var(--green)':'var(--red)'):'var(--text2)'}">${has?fmt(s.price):'—'}</div></div>
-      <div class="modal-kpi"><div class="modal-kpi-l">P&L</div><div class="modal-kpi-v" style="color:${has?(pnl>=0?'var(--green)':'var(--red)'):'var(--text2)'}">${has?fmt(pnl):'—'}</div></div>
+      <div class="modal-kpi"><div class="modal-kpi-l">${closed?'Realized P&L':'Unrealized P&L'}</div><div class="modal-kpi-v" style="color:${(closed||has)?(totalPnl>=0?'var(--green)':'var(--red)'):'var(--text2)'}">${(closed||has)?fmt(closed?realizedPnl:unrealizedPnl):'—'}</div></div>
+      <div class="modal-kpi"><div class="modal-kpi-l">Total P&L</div><div class="modal-kpi-v" style="color:${(closed||has)?(totalPnl>=0?'var(--green)':'var(--red)'):'var(--text2)'}">${(closed||has)?fmt(totalPnl):'—'}</div></div>
     </div>
     <div class="buys-title">${s.buys.length} BUY${s.buys.length!==1?'S':''}</div>
     ${s.buys.map(b=>`<div class="buy-row"><span class="buy-date">${b.date||'—'}</span><span class="buy-shares">${b.shares%1===0?b.shares:b.shares.toFixed(4)} sh</span><span class="buy-price">@ ${fmt(b.buyPrice)}</span><span class="buy-total">${fmt(b.buyPrice*b.shares)}</span><button class="btn-del-buy" onclick="removeBuy('${ticker}',${b.id})">✕</button></div>`).join('')}
-    <div class="modal-footer"><button class="btn-danger" onclick="removeStock('${ticker}')">Remove ${ticker}</button></div>`;
+    ${(s.sells||[]).length?`
+    <div class="buys-title" style="margin-top:14px;color:var(--red)">${s.sells.length} SALE${s.sells.length!==1?'S':''} &nbsp;·&nbsp; Realized: <span style="color:${realizedPnl>=0?'var(--green)':'var(--red)'}">${fmt(realizedPnl)}</span></div>
+    ${s.sells.map(b=>`<div class="sell-row"><span class="buy-date">${b.date||'—'}</span><span class="buy-shares" style="color:var(--red)">${b.shares%1===0?b.shares:b.shares.toFixed(4)} sh</span><span class="buy-price" style="color:var(--text2)">@ ${fmt(b.sellPrice)}</span><span class="buy-total" style="color:${(b.sellPrice-avg)*b.shares>=0?'var(--green)':'var(--red)'}">${fmt((b.sellPrice-avg)*b.shares)}</span><button class="btn-del-buy" onclick="removeSell('${ticker}',${b.id})">✕</button></div>`).join('')}`:''}
+    <div class="sell-inline" id="sellForm">
+      <div class="sell-inline-title">Record Sale</div>
+      <div class="sell-inline-grid">
+        <div><div class="sell-field-label">Shares Sold</div><input id="sShares" type="number" placeholder="${sh>0?sh.toFixed(2):0}" step="0.01" min="0.01"></div>
+        <div><div class="sell-field-label">Sell Price ($)</div><input id="sPrice" type="number" placeholder="${has?s.price.toFixed(2):'0.00'}" step="0.01" min="0.01"></div>
+        <div><div class="sell-field-label">Sell Date</div><input id="sDate" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-cancel-sell" onclick="el('sellForm').classList.remove('open')">Cancel</button>
+        <button class="btn-confirm-sell" onclick="sellPosition('${ticker}')">Confirm Sale</button>
+      </div>
+      <div class="ferr" id="sellErr" style="text-align:right;margin-top:6px"></div>
+    </div>
+    <div class="modal-footer">
+      ${!closed?`<button class="btn-sell-open" onclick="el('sellForm').classList.toggle('open')">↓ Record Sale</button>`:''}
+      <button class="btn-danger" onclick="removeStock('${ticker}')">Remove ${ticker}</button>
+    </div>`;
   el('modal').classList.add('open');
 }
 function closeModal(){el('modal').classList.remove('open')}
@@ -801,63 +862,81 @@ function renderPortfolio(){
     el('emptyState').style.display='flex';
     renderKPIs(0,0);renderAlloc([]);return;
   }
-  el('emptyState').style.display='none';grid.innerHTML='';
-  let ti=0,tv=0;
+  const emptyEl=el('emptyState');if(emptyEl)emptyEl.style.display='none';grid.innerHTML='';
+  let ti=0,tv=0,totalRealized=0;
   stocks.forEach(s=>{
-    const sh=s.buys.reduce((a,b)=>a+b.shares,0);
+    const totalBought=s.buys.reduce((a,b)=>a+b.shares,0);
+    const totalSold=(s.sells||[]).reduce((a,b)=>a+b.shares,0);
+    const sh=totalBought-totalSold;
     const inv=s.buys.reduce((a,b)=>a+b.buyPrice*b.shares,0);
-    const avg=inv/sh;const has=s.price>0;
-    const cur=has?s.price:avg;const val=cur*sh;
-    const pnl=val-inv;const pct=((cur-avg)/avg)*100;const up=pct>=0;
-    ti+=inv;tv+=val;
+    const avg=inv/totalBought;
+    const realizedPnl=(s.sells||[]).reduce((a,b)=>a+(b.sellPrice-avg)*b.shares,0);
+    const closed=sh<=0.0001;
+    const has=!closed&&s.price>0;
+    const cur=has?s.price:avg;
+    const val=closed?0:cur*sh;
+    const unrealizedPnl=has?(s.price-avg)*sh:0;
+    const pnl=unrealizedPnl+realizedPnl;
+    const pct=closed?(totalSold>0?(realizedPnl/(avg*totalSold))*100:0):((cur-avg)/avg)*100;
+    const up=pct>=0;
+    if(!closed){ti+=avg*sh;tv+=has?s.price*sh:avg*sh;}
+    totalRealized+=realizedPnl;
     const prev=prevPrices[s.ticker];
-    const dir=prev?cur>prev?'up':cur<prev?'dn':'':'';
+    const dir=(!closed&&prev)?cur>prev?'up':cur<prev?'dn':'':'';
     const card=document.createElement('div');
-    card.className='scard '+(up?'up':'dn');card.onclick=()=>openModal(s.ticker);
+    card.className='scard '+(closed?'dn':(up?'up':'dn'));card.onclick=()=>openModal(s.ticker);
     const logoUrl=s.logo||`https://assets.parqet.com/logos/symbol/${s.ticker}?format=svg`;
+    const buysLabel=`${s.buys.length} buy${s.buys.length!==1?'s':''}${totalSold>0?` · ${totalSold%1===0?totalSold:totalSold.toFixed(2)} sold`:''}`;
     card.innerHTML=`
       <div class="sc-top">
         <div class="sc-logo-wrap">
           <img class="sc-logo" src="${logoUrl}" onerror="this.style.display='none'" alt="">
           <div>
-            <div style="display:flex;align-items:center;gap:6px"><div class="sc-ticker">${s.ticker}</div><span class="sc-buys">${s.buys.length} buy${s.buys.length!==1?'s':''}</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><div class="sc-ticker">${s.ticker}</div><span class="sc-buys">${buysLabel}</span>${closed?'<span style="font-size:8px;background:rgba(255,69,96,0.12);border:1px solid rgba(255,69,96,0.25);border-radius:2px;padding:1px 5px;color:var(--red);font-weight:700;letter-spacing:.5px">CLOSED</span>':''}</div>
             <div class="sc-name">${s.name}</div>
           </div>
         </div>
         <div>
-          <div class="sc-price ${has?(up?'c-green':'c-red'):'c-muted'}">${has?fmt(s.price):'<span class="blink"></span>'}</div>
-          <div class="sc-chg" style="color:${s.chgPct!=null?(s.chgPct>=0?'var(--green)':'var(--red)'):'var(--text3)'}">${s.chgPct!=null?(s.chgPct>=0?'▲':'▼')+' '+Math.abs(s.chgPct).toFixed(2)+'% today':'—'}</div>
+          <div class="sc-price ${closed?'c-red':(has?(up?'c-green':'c-red'):'c-muted')}">${closed?'SOLD':(has?fmt(s.price):'<span class="blink"></span>')}</div>
+          <div class="sc-chg" style="color:${closed?(realizedPnl>=0?'var(--green)':'var(--red)'):(s.chgPct!=null?(s.chgPct>=0?'var(--green)':'var(--red)'):'var(--text3)')}">
+            ${closed?`Realized ${fmt(realizedPnl)}`:(s.chgPct!=null?(s.chgPct>=0?'▲':'▼')+' '+Math.abs(s.chgPct).toFixed(2)+'% today':'—')}
+          </div>
         </div>
       </div>
-      <div class="sc-breakeven">Break-even: <span>${fmt(avg)}</span>${has?` · ${up?'▲ '+fmtPct(pct)+' above':'▼ '+fmtPct(Math.abs(pct))+' below'} break-even`:''}</div>
+      ${closed
+        ?`<div class="sc-breakeven">Avg buy: <span>${fmt(avg)}</span> · Realized return: <span style="color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(pct).toFixed(2)}%</span></div>`
+        :`<div class="sc-breakeven">Break-even: <span>${fmt(avg)}</span>${has?` · ${up?'▲ '+fmtPct(pct)+' above':'▼ '+fmtPct(Math.abs(pct))+' below'} break-even`:''}</div>`}
       <div class="sparkline-wrap"><canvas id="spark-${s.ticker}" width="100%" height="36" style="width:100%;height:36px"></canvas></div>
       <div class="sc-divider"></div>
       <div class="sc-stats">
-        <div><div class="sc-stat-l">Shares</div><div class="sc-stat-v">${sh%1===0?sh:sh.toFixed(2)}</div></div>
+        <div><div class="sc-stat-l">${closed?'Sold':'Shares'}</div><div class="sc-stat-v">${closed?(totalSold%1===0?totalSold:totalSold.toFixed(2)):(sh%1===0?sh:sh.toFixed(2))}</div></div>
         <div><div class="sc-stat-l">Avg Buy</div><div class="sc-stat-v">${fmt(avg)}</div></div>
-        <div><div class="sc-stat-l">Invested</div><div class="sc-stat-v">${fmt(inv)}</div></div>
+        <div><div class="sc-stat-l">Invested</div><div class="sc-stat-v">${closed?'—':fmt(avg*sh)}</div></div>
         <div><div class="sc-stat-l">Value</div><div class="sc-stat-v">${has?fmt(val):'—'}</div></div>
-        <div><div class="sc-stat-l">P&L</div><div class="sc-stat-v pnl-v ${has?(up?'c-green':'c-red'):'c-muted'}">${has?fmt(pnl):'—'}</div></div>
-        <div><div class="sc-stat-l">Return</div><div class="sc-stat-v">${has?`<span class="pill ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(pct).toFixed(2)}%</span>`:'—'}</div></div>
+        <div><div class="sc-stat-l">P&L</div><div class="sc-stat-v pnl-v ${(has||closed)?(up?'c-green':'c-red'):'c-muted'}">${(has||closed)?fmt(pnl):'—'}</div></div>
+        <div><div class="sc-stat-l">Return</div><div class="sc-stat-v">${(has||closed)?`<span class="pill ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(pct).toFixed(2)}%</span>`:'—'}</div></div>
       </div>
-      <div class="sc-foot"><span class="live-tag ${has?'on':''}">${has?'● LIVE':'○ AWAITING'}</span><span class="detail-hint">CLICK FOR DETAILS</span></div>`;
+      <div class="sc-foot"><span class="live-tag ${has?'on':''}">${closed?'◎ CLOSED':(has?'● LIVE':'○ AWAITING')}</span><span class="detail-hint">CLICK FOR DETAILS</span></div>`;
     grid.appendChild(card);
-    if(dir==='up'){setTimeout(()=>{card.classList.add('fg');setTimeout(()=>card.classList.remove('fg'),800)},50)}
-    else if(dir==='dn'){setTimeout(()=>{card.classList.add('fr');setTimeout(()=>card.classList.remove('fr'),800)},50)}
+    if(!closed){
+      if(dir==='up'){setTimeout(()=>{card.classList.add('fg');setTimeout(()=>card.classList.remove('fg'),800)},50)}
+      else if(dir==='dn'){setTimeout(()=>{card.classList.add('fr');setTimeout(()=>card.classList.remove('fr'),800)},50)}
+    }
   });
-  renderKPIs(ti,tv);renderAlloc(stocks,tv);setTimeout(drawSparklines,100);
+  const openStocks=stocks.filter(s=>{const tb=s.buys.reduce((a,b)=>a+b.shares,0);const ts=(s.sells||[]).reduce((a,b)=>a+b.shares,0);return tb-ts>0.0001;});
+  renderKPIs(ti,tv,totalRealized);renderAlloc(openStocks,tv);setTimeout(drawSparklines,100);
   // Update dot
-  const dot=el('logoDot');const p=tv-ti;
+  const dot=el('logoDot');const p=tv-ti+totalRealized;
   if(p>0){dot.style.background='var(--green)';dot.style.boxShadow='0 0 0 2px rgba(0,217,126,0.3)'}
   else if(p<0){dot.style.background='var(--red)';dot.style.boxShadow='0 0 0 2px rgba(255,69,96,0.3)'}
   else{dot.style.background='var(--gold)';dot.style.boxShadow='0 0 0 2px rgba(201,168,76,0.2)'}
 }
 
-function renderKPIs(ti,tv){
+function renderKPIs(ti,tv,totalRealized=0){
   el('k-invested').textContent=fmt(ti);el('k-invested-eur').textContent=fmtEur(ti);el('k-pos').textContent=stocks.length+' position'+(stocks.length!==1?'s':'');
   el('k-value').textContent=fmt(tv);el('k-value-eur').textContent=fmtEur(tv);el('k-value').className='kpi-val '+(tv>ti?'c-green':tv<ti?'c-red':'c-muted');
   el('kpi1').className='kpi '+(tv>ti?'lit':'');
-  const pnl=tv-ti,pct=ti>0?((tv-ti)/ti)*100:0;
+  const pnl=tv-ti+totalRealized,pct=ti>0?(pnl/ti)*100:0;
   el('k-pnl').textContent=fmt(pnl);el('k-pnl-eur').textContent=fmtEur(pnl);el('k-pnl').className='kpi-val '+(pnl>0?'c-green':pnl<0?'c-red':'c-muted');
   el('kpi2').className='kpi '+(pnl>0?'lit':'');
   el('k-pnlpct').textContent=ti>0?fmtPct(pct):'—';
