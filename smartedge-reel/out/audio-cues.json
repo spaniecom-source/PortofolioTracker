@@ -1,0 +1,116 @@
+{
+  "fps": 30,
+  "duration": 19,
+  "cues": [
+    {
+      "t": 0,
+      "cue": "Phone ring (soft, filtered)",
+      "dur": 1.45,
+      "frame": 0
+    },
+    {
+      "t": 1.45,
+      "cue": "Ring cuts — low sub thud / missed-call tone",
+      "frame": 44
+    },
+    {
+      "t": 2.25,
+      "cue": "Air whoosh into data view",
+      "frame": 68
+    },
+    {
+      "t": 3.7,
+      "cue": "Descending tick sweep as €247 drops to €0",
+      "frame": 111
+    },
+    {
+      "t": 4.4,
+      "cue": "Soft UI tick ×3 (stats)",
+      "dur": 0.8,
+      "frame": 132
+    },
+    {
+      "t": 6,
+      "cue": "Tape-style rewind swell",
+      "dur": 0.95,
+      "frame": 180
+    },
+    {
+      "t": 6.95,
+      "cue": "Hard stop / freeze",
+      "frame": 209
+    },
+    {
+      "t": 7.25,
+      "cue": "Phone ring again",
+      "dur": 0.55,
+      "frame": 218
+    },
+    {
+      "t": 7.87,
+      "cue": "Call connect chime",
+      "frame": 236
+    },
+    {
+      "t": 7.97,
+      "cue": "Guest line (optional VO)",
+      "frame": 239
+    },
+    {
+      "t": 8.59,
+      "cue": "AI reply (optional VO)",
+      "frame": 258
+    },
+    {
+      "t": 9.2,
+      "cue": "Transition whoosh into dashboard",
+      "frame": 276
+    },
+    {
+      "t": 10,
+      "cue": "UI click — step 1",
+      "frame": 300
+    },
+    {
+      "t": 10.95,
+      "cue": "UI click — step 2",
+      "frame": 329
+    },
+    {
+      "t": 11.9,
+      "cue": "UI click — step 3",
+      "frame": 357
+    },
+    {
+      "t": 12.85,
+      "cue": "UI click — step 4 + coin/value tick",
+      "frame": 386
+    },
+    {
+      "t": 13.8,
+      "cue": "UI click — step 5",
+      "frame": 414
+    },
+    {
+      "t": 15.1,
+      "cue": "Booking confirmation chime (badge check)",
+      "frame": 453
+    },
+    {
+      "t": 16.4,
+      "cue": "Cinematic build (low pad swell)",
+      "dur": 1.2,
+      "frame": 492
+    },
+    {
+      "t": 16.95,
+      "cue": "Subtle final impact on headline",
+      "frame": 509
+    },
+    {
+      "t": 17.45,
+      "cue": "Soft UI click as the CTA lands",
+      "frame": 524
+    }
+  ]
+}
