@@ -62,7 +62,7 @@ file) as the AI answers at 9.53 s.
 | Scene start/end | `config.js` → `scenes` and `rewind` |
 | Beats inside a scene | The top of each file's `update()` in `scenes/` |
 | Layout and type sizes | `styles.css`, one section per scene |
-| Sound cues | `config.js` → `audioCues` |
+| Sound mix (timing, levels) | `audio/mix.json`, then `python3 render/mix_audio.py` |
 
 Each scene is a separate file in `scenes/` with a `build()` (creates DOM) and
 an `update(ctx)` (sets every animated property from the time `ctx.T`).
