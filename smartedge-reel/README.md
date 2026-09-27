@@ -7,6 +7,8 @@ A 24-second, 1080 × 1920, 30 fps Instagram Reel built entirely in code
 | --- | --- |
 | Final video | `out/smartedge-reel.mp4` |
 | Single-file preview player | `out/smartedge-reel-preview.html` |
+| **Final video with sound** | `out/smartedge-reel-sound.mp4` |
+| Soundtrack only (24-bit WAV, −14 LUFS) | `out/soundtrack.wav` |
 | SFX cue sheet (seconds + frame numbers) | `out/audio-cues.json` |
 
 ## Preview
@@ -28,7 +30,25 @@ node render/render.mjs --scale 0.5 --stills 3  # fast half-res drafts
 node render/build-standalone.mjs               # rebuild the single-file preview
 ```
 
-A full render takes about 5 minutes on a small cloud VM.
+A full render takes about 6 minutes on a small cloud VM.
+
+## Sound
+
+`audio/` holds the music and effects, and `audio/mix.json` places them.
+Each cue sets when it plays (video seconds), where in the file it starts,
+its length and its gain in dB. There are optional fades, `rate` (tape-style
+speed-up), `reverse`, `lowpass`, and `auto` volume points. After changing
+timing or visuals, re-render the video first, then run:
+
+```bash
+python3 render/mix_audio.py      # → out/soundtrack.wav + out/smartedge-reel-sound.mp4
+```
+
+The mix is loudness-normalised in two passes to −14 LUFS with −1 dB true
+peak. The music (117 BPM) plays its calm intro under the missed call. The
+tape stop and a reversed, sped-up copy of that intro make the rewind. The
+freeze is silent. The track resumes exactly on its drop (8.06 s into the
+file) as the AI answers at 9.53 s.
 
 ## What to edit
 
