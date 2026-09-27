@@ -113,6 +113,39 @@
     return `${String(m).padStart(2, '0')}:${r.toFixed(2).padStart(5, '0')}`;
   };
 
+  // ---------- time map: video seconds <-> design seconds ----------
+  // Base `speed` everywhere, except `speedOverrides` ranges (design time).
+  const segments = () => {
+    const cfg = SE.config, base = cfg.speed || 1;
+    const ov = (cfg.speedOverrides || []).slice().sort((a, b) => a.from - b.from);
+    const segs = [];
+    let d = 0;
+    for (const o of ov) {
+      if (o.from > d) segs.push({ d0: d, d1: o.from, speed: base });
+      segs.push({ d0: o.from, d1: o.to, speed: o.speed });
+      d = o.to;
+    }
+    segs.push({ d0: d, d1: Infinity, speed: base });
+    return segs;
+  };
+  SE.toDesign = (T) => {
+    let r = 0;
+    for (const s of segments()) {
+      const len = (s.d1 - s.d0) / s.speed;
+      if (T <= r + len) return s.d0 + (T - r) * s.speed;
+      r += len;
+    }
+    return T;
+  };
+  SE.toReal = (D) => {
+    let r = 0;
+    for (const s of segments()) {
+      if (D <= s.d1) return r + (D - s.d0) / s.speed;
+      r += (s.d1 - s.d0) / s.speed;
+    }
+    return D;
+  };
+
   // ---------- timeline ----------
   SE.scenes = [];
   SE.scene = (def) => SE.scenes.push(def);
@@ -153,7 +186,7 @@
 
   SE.render = (T) => {
     const ctx = SE.ctx;
-    ctx.T = T * (ctx.cfg.speed || 1); // design time
+    ctx.T = SE.toDesign(T); // design time
     ctx.S = SE.story(T);
     ctx.world_ = { s: 1, x: 0, y: 0, blur: 0, bright: 1, sat: 1, rz: 0 };
     ctx.bg.reset();

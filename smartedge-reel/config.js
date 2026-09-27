@@ -13,6 +13,9 @@ SE.config = {
   // Playback speed. Scene timings below are written at 1.0; 0.8 plays
   // everything 25% slower. Output length = duration (real seconds).
   speed: 0.8,
+  // Design-time ranges that keep their own speed. The rewind and freeze stay
+  // at full speed so the snap-back keeps its punch.
+  speedOverrides: [{ from: 6.0, to: 7.25, speed: 1.0 }],
   duration: 24.0,
 
   // Brand palette (SmartEdge AI Brand Guide). Applied as CSS variables.
@@ -133,8 +136,8 @@ SE.config = {
     { t: 6.95, cue: 'Hard stop / freeze' },
     { t: 7.25, cue: 'Phone ring again', dur: 0.55 },
     { t: 7.87, cue: 'Call connect chime' },
-    { t: 7.97, cue: 'Guest line (optional VO)' },
-    { t: 8.59, cue: 'AI reply (optional VO)' },
+    { t: 7.97, cue: 'Chat bubble pop — guest message' },
+    { t: 8.59, cue: 'Chat bubble pop — AI reply' },
     { t: 9.20, cue: 'Transition whoosh into dashboard' },
     { t: 10.00, cue: 'UI click — step 1' },
     { t: 10.95, cue: 'UI click — step 2' },

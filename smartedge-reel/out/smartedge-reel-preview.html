@@ -326,6 +326,9 @@ SE.config = {
   // Playback speed. Scene timings below are written at 1.0; 0.8 plays
   // everything 25% slower. Output length = duration (real seconds).
   speed: 0.8,
+  // Design-time ranges that keep their own speed. The rewind and freeze stay
+  // at full speed so the snap-back keeps its punch.
+  speedOverrides: [{ from: 6.0, to: 7.25, speed: 1.0 }],
   duration: 24.0,
 
   // Brand palette (SmartEdge AI Brand Guide). Applied as CSS variables.
@@ -446,8 +449,8 @@ SE.config = {
     { t: 6.95, cue: 'Hard stop / freeze' },
     { t: 7.25, cue: 'Phone ring again', dur: 0.55 },
     { t: 7.87, cue: 'Call connect chime' },
-    { t: 7.97, cue: 'Guest line (optional VO)' },
-    { t: 8.59, cue: 'AI reply (optional VO)' },
+    { t: 7.97, cue: 'Chat bubble pop — guest message' },
+    { t: 8.59, cue: 'Chat bubble pop — AI reply' },
     { t: 9.20, cue: 'Transition whoosh into dashboard' },
     { t: 10.00, cue: 'UI click — step 1' },
     { t: 10.95, cue: 'UI click — step 2' },
@@ -577,6 +580,39 @@ SE.config = {
     return `${String(m).padStart(2, '0')}:${r.toFixed(2).padStart(5, '0')}`;
   };
 
+  // ---------- time map: video seconds <-> design seconds ----------
+  // Base `speed` everywhere, except `speedOverrides` ranges (design time).
+  const segments = () => {
+    const cfg = SE.config, base = cfg.speed || 1;
+    const ov = (cfg.speedOverrides || []).slice().sort((a, b) => a.from - b.from);
+    const segs = [];
+    let d = 0;
+    for (const o of ov) {
+      if (o.from > d) segs.push({ d0: d, d1: o.from, speed: base });
+      segs.push({ d0: o.from, d1: o.to, speed: o.speed });
+      d = o.to;
+    }
+    segs.push({ d0: d, d1: Infinity, speed: base });
+    return segs;
+  };
+  SE.toDesign = (T) => {
+    let r = 0;
+    for (const s of segments()) {
+      const len = (s.d1 - s.d0) / s.speed;
+      if (T <= r + len) return s.d0 + (T - r) * s.speed;
+      r += len;
+    }
+    return T;
+  };
+  SE.toReal = (D) => {
+    let r = 0;
+    for (const s of segments()) {
+      if (D <= s.d1) return r + (D - s.d0) / s.speed;
+      r += (s.d1 - s.d0) / s.speed;
+    }
+    return D;
+  };
+
   // ---------- timeline ----------
   SE.scenes = [];
   SE.scene = (def) => SE.scenes.push(def);
@@ -617,7 +653,7 @@ SE.config = {
 
   SE.render = (T) => {
     const ctx = SE.ctx;
-    ctx.T = T * (ctx.cfg.speed || 1); // design time
+    ctx.T = SE.toDesign(T); // design time
     ctx.S = SE.story(T);
     ctx.world_ = { s: 1, x: 0, y: 0, blur: 0, bright: 1, sat: 1, rz: 0 };
     ctx.bg.reset();
@@ -1403,11 +1439,11 @@ SE.scene({
   const chipEls = Object.entries(cfg.scenes).map(([id, [a, b]]) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    const k = cfg.speed || 1;
-    btn.textContent = `${names[id] || id} ${(a / k).toFixed(1)}s`;
-    btn.addEventListener('click', () => { seek(a / k); });
+    const ra = SE.toReal(a), rb = SE.toReal(b);
+    btn.textContent = `${names[id] || id} ${ra.toFixed(1)}s`;
+    btn.addEventListener('click', () => { seek(ra); });
     chips.appendChild(btn);
-    return { btn, a: a / k, b: b / k };
+    return { btn, a: ra, b: rb };
   });
 
   let T = 0, playing = false, last = 0;
