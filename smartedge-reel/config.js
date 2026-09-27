@@ -10,7 +10,10 @@ SE.config = {
   width: 1080,
   height: 1920,
   fps: 30,
-  duration: 19.0,
+  // Playback speed. Scene timings below are written at 1.0; 0.8 plays
+  // everything 25% slower. Output length = duration (real seconds).
+  speed: 0.8,
+  duration: 24.0,
 
   // Brand palette (SmartEdge AI Brand Guide). Applied as CSS variables.
   colors: {

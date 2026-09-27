@@ -37,10 +37,11 @@
   const chipEls = Object.entries(cfg.scenes).map(([id, [a, b]]) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = `${names[id] || id} ${a.toFixed(1)}s`;
-    btn.addEventListener('click', () => { seek(a); });
+    const k = cfg.speed || 1;
+    btn.textContent = `${names[id] || id} ${(a / k).toFixed(1)}s`;
+    btn.addEventListener('click', () => { seek(a / k); });
     chips.appendChild(btn);
-    return { btn, a, b };
+    return { btn, a: a / k, b: b / k };
   });
 
   let T = 0, playing = false, last = 0;

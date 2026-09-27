@@ -45,7 +45,7 @@ const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, de
 page.on('pageerror', (e) => console.error('page error:', e.message));
 await page.goto(`http://localhost:${port}/index.html?render`);
 await page.waitForFunction(() => window.__reelReady === true, null, { timeout: 30000 });
-const cfg = await page.evaluate(() => ({ fps: SE.config.fps, duration: SE.config.duration, cues: SE.config.audioCues }));
+const cfg = await page.evaluate(() => ({ fps: SE.config.fps, duration: SE.config.duration, speed: SE.config.speed || 1, cues: SE.config.audioCues }));
 const clip = { x: 0, y: 0, width: 1080, height: 1920 };
 
 async function frameAt(t) {
@@ -81,7 +81,7 @@ if (args.stills) {
   }
   ff.stdin.end();
   await new Promise((r, j) => ff.on('close', (c) => (c === 0 ? r() : j(new Error('ffmpeg exited ' + c)))));
-  await writeFile(path.join(ROOT, 'out/audio-cues.json'), JSON.stringify({ fps: cfg.fps, duration: cfg.duration, cues: cfg.cues.map((c) => ({ ...c, frame: Math.round(c.t * cfg.fps) })) }, null, 2));
+  await writeFile(path.join(ROOT, 'out/audio-cues.json'), JSON.stringify({ fps: cfg.fps, duration: cfg.duration, cues: cfg.cues.map((c) => { const t = +(c.t / cfg.speed).toFixed(2); return { ...c, t, dur: c.dur ? +(c.dur / cfg.speed).toFixed(2) : undefined, frame: Math.round(t * cfg.fps) }; }) }, null, 2));
   console.log(`\nwrote ${path.relative(ROOT, out)}`);
 }
 

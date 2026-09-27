@@ -1,6 +1,6 @@
 # SmartEdge AI — "What happens when a hotel misses a call?"
 
-A 19-second, 1080 × 1920, 30 fps Instagram Reel built entirely in code
+A 24-second, 1080 × 1920, 30 fps Instagram Reel built entirely in code
 (HTML / CSS / JS), rendered frame-exact to H.264 through headless Chromium.
 
 | Output | Path |
@@ -38,6 +38,7 @@ A full render takes about 5 minutes on a small cloud VM.
 | Brand colours | `config.js` → `colors` (these become CSS variables) |
 | Fonts | `config.js` → `fonts`, and the `@font-face` blocks in `styles.css` |
 | Logo | Replace `assets/brand/mark.png` and `assets/brand/wordmark.png` (transparent PNGs) |
+| Overall pace | `config.js` → `speed` (0.8 = 25% slower than the design timings) and `duration` |
 | Scene start/end | `config.js` → `scenes` and `rewind` |
 | Beats inside a scene | The top of each file's `update()` in `scenes/` |
 | Layout and type sizes | `styles.css`, one section per scene |
@@ -49,21 +50,26 @@ Nothing depends on the previous frame, so any frame renders identically in
 any order. The shared phone lives in `engine/components.js`. Scenes 1 and 3
 both drive it through `ctx.phone.s`.
 
+**Timing units.** Every time in `config.js` and `scenes/` is design time, as
+if `speed` were 1.0. The engine multiplies real time by `speed`. At 0.8,
+design time 10 s lands at 12.5 s in the video. `out/audio-cues.json` is
+written in real video time.
+
 **How the rewind works.** Scenes 1 and 2 read `ctx.S`, a "story clock". It
-equals real time until 6.0 s, runs backwards to 1.0 s by 6.95 s, then holds.
+equals design time until 6.0 s, runs backwards to 1.0 s by 6.95 s, then holds.
 The rewind is scenes 1 and 2 actually playing in reverse, not a separate
 animation.
 
-## Timeline
+## Timeline (video seconds at speed 0.8)
 
 | Time | Scene | Beat |
 | --- | --- | --- |
-| 0.0–2.6 | Hook | Phone rings, headline, MISSED CALL |
-| 2.2–6.0 | Lost booking | €247 → €0 LOST, booking-value chart, 3 / 7 / 12 losses |
-| 6.0–7.25 | Rewind | Everything plays back, then freezes on the ringing phone |
-| 7.25–9.4 | AI answers | AI RECEPTIONIST · ANSWERING…, two-line conversation |
-| 9.2–15.2 | Automation | Five pipeline steps, response time, €247 captured |
-| 14.65–19.0 | Result | Reservation confirmed, logo, end line |
+| 0.0–3.25 | Hook | Phone rings, headline, MISSED CALL |
+| 2.75–7.5 | Lost booking | €247 → €0 LOST, booking-value chart, 3 / 7 / 12 losses |
+| 7.5–9.06 | Rewind | Everything plays back, then freezes on the ringing phone |
+| 9.06–11.75 | AI answers | AI RECEPTIONIST · ANSWERING…, two-line conversation |
+| 11.5–19.0 | Automation | Five pipeline steps, response time, €247 captured |
+| 18.3–24.0 | Result | Reservation confirmed, logo, CTA, aismartedge.com |
 
 ## Brand notes
 

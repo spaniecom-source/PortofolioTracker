@@ -1,116 +1,116 @@
 {
   "fps": 30,
-  "duration": 19,
+  "duration": 24,
   "cues": [
     {
       "t": 0,
       "cue": "Phone ring (soft, filtered)",
-      "dur": 1.45,
+      "dur": 1.81,
       "frame": 0
     },
     {
-      "t": 1.45,
+      "t": 1.81,
       "cue": "Ring cuts — low sub thud / missed-call tone",
-      "frame": 44
+      "frame": 54
     },
     {
-      "t": 2.25,
+      "t": 2.81,
       "cue": "Air whoosh into data view",
-      "frame": 68
+      "frame": 84
     },
     {
-      "t": 3.7,
+      "t": 4.63,
       "cue": "Descending tick sweep as €247 drops to €0",
-      "frame": 111
+      "frame": 139
     },
     {
-      "t": 4.4,
+      "t": 5.5,
       "cue": "Soft UI tick ×3 (stats)",
-      "dur": 0.8,
-      "frame": 132
+      "dur": 1,
+      "frame": 165
     },
     {
-      "t": 6,
+      "t": 7.5,
       "cue": "Tape-style rewind swell",
-      "dur": 0.95,
-      "frame": 180
+      "dur": 1.19,
+      "frame": 225
     },
     {
-      "t": 6.95,
+      "t": 8.69,
       "cue": "Hard stop / freeze",
-      "frame": 209
+      "frame": 261
     },
     {
-      "t": 7.25,
+      "t": 9.06,
       "cue": "Phone ring again",
-      "dur": 0.55,
-      "frame": 218
+      "dur": 0.69,
+      "frame": 272
     },
     {
-      "t": 7.87,
+      "t": 9.84,
       "cue": "Call connect chime",
-      "frame": 236
+      "frame": 295
     },
     {
-      "t": 7.97,
+      "t": 9.96,
       "cue": "Guest line (optional VO)",
-      "frame": 239
+      "frame": 299
     },
     {
-      "t": 8.59,
+      "t": 10.74,
       "cue": "AI reply (optional VO)",
-      "frame": 258
+      "frame": 322
     },
     {
-      "t": 9.2,
+      "t": 11.5,
       "cue": "Transition whoosh into dashboard",
-      "frame": 276
+      "frame": 345
     },
     {
-      "t": 10,
+      "t": 12.5,
       "cue": "UI click — step 1",
-      "frame": 300
+      "frame": 375
     },
     {
-      "t": 10.95,
+      "t": 13.69,
       "cue": "UI click — step 2",
-      "frame": 329
+      "frame": 411
     },
     {
-      "t": 11.9,
+      "t": 14.88,
       "cue": "UI click — step 3",
-      "frame": 357
+      "frame": 446
     },
     {
-      "t": 12.85,
+      "t": 16.06,
       "cue": "UI click — step 4 + coin/value tick",
-      "frame": 386
+      "frame": 482
     },
     {
-      "t": 13.8,
+      "t": 17.25,
       "cue": "UI click — step 5",
-      "frame": 414
+      "frame": 518
     },
     {
-      "t": 15.1,
+      "t": 18.88,
       "cue": "Booking confirmation chime (badge check)",
-      "frame": 453
+      "frame": 566
     },
     {
-      "t": 16.4,
+      "t": 20.5,
       "cue": "Cinematic build (low pad swell)",
-      "dur": 1.2,
-      "frame": 492
+      "dur": 1.5,
+      "frame": 615
     },
     {
-      "t": 16.95,
+      "t": 21.19,
       "cue": "Subtle final impact on headline",
-      "frame": 509
+      "frame": 636
     },
     {
-      "t": 17.45,
+      "t": 21.81,
       "cue": "Soft UI click as the CTA lands",
-      "frame": 524
+      "frame": 654
     }
   ]
 }

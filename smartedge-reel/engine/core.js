@@ -153,7 +153,7 @@
 
   SE.render = (T) => {
     const ctx = SE.ctx;
-    ctx.T = T;
+    ctx.T = T * (ctx.cfg.speed || 1); // design time
     ctx.S = SE.story(T);
     ctx.world_ = { s: 1, x: 0, y: 0, blur: 0, bright: 1, sat: 1, rz: 0 };
     ctx.bg.reset();
